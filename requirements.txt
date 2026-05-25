@@ -1,1 +1,9 @@
 
+shodan
+requests
+beautifulsoup4
+anthropic
+colorama
+reportlab
+python-whois
+argparse
