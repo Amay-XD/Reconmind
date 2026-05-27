@@ -244,6 +244,9 @@ class RiskBar(Flowable):
         if filled_w > 0:
             c.setFillColor(self.colour)
             c.roundRect(0, y, filled_w, self.BAR_H, 3, stroke=0, fill=1)
+        elif self.score == 0 and self.level == "LOW":
+            c.setFillColor(GREEN)
+            c.roundRect(0, y, 6, self.BAR_H, 3, stroke=0, fill=1)
 
         # ── Tick marks at 25/50/75 % ─────────────────────────────
         c.setFillColor(DARK_BG)
@@ -552,7 +555,7 @@ def _build_cover(report: dict, styles: dict, is_summary: bool = False) -> list:
         ["TARGET", _xml_escape(target)],
         ["SCAN DATE", _xml_escape(date_s)],
         ["REPORT TYPE", "Threat Intelligence Assessment"],
-        ["CLASSIFICATION", "TLP:AMBER — CONFIDENTIAL"],
+        ["CLASSIFICATION", "TLP:AMBER — CONFIDENTIAL" if score > 0 else "TLP:CLEAR — CLEAN FOOTPRINT"],
     ]
 
     label_style = ParagraphStyle(
