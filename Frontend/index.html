@@ -1,1 +1,356 @@
 
+# index.html
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+  <title>ReconMind — AI OSINT Intelligence Engine</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css">
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+
+  <div class="grid-bg"></div>
+  <div class="scanlines"></div>
+
+  <!-- SIDEBAR -->
+
+  <aside class="sidebar">
+
+    <div class="logo">
+      <h1>ReconMind</h1>
+      <span>AI Intelligence</span>
+    </div>
+
+    <nav>
+
+      <button class="nav-item active">
+        <span>◉</span>
+        Dashboard
+      </button>
+
+      <button class="nav-item">
+        <span>◎</span>
+        Investigations
+      </button>
+
+      <button class="nav-item">
+        <span>◈</span>
+        Threat Intel
+      </button>
+
+      <button class="nav-item">
+        <span>▣</span>
+        Breach Analysis
+      </button>
+
+      <button class="nav-item">
+        <span>◌</span>
+        Social Scan
+      </button>
+
+      <button class="nav-item">
+        <span>⬡</span>
+        Reports
+      </button>
+
+    </nav>
+
+  </aside>
+
+  <!-- MAIN -->
+
+  <main class="main">
+
+    <!-- TOPBAR -->
+
+    <header class="topbar">
+
+      <div class="status">
+        SYSTEM STATUS:
+        <span class="online">ONLINE</span>
+      </div>
+
+      <div class="top-actions">
+        <button>EXPORT PDF</button>
+        <button>DOWNLOAD JSON</button>
+      </div>
+
+    </header>
+
+    <!-- HERO -->
+
+    <section class="hero">
+
+      <div class="hero-content">
+
+        <h1 class="hero-title">
+          RECONMIND
+        </h1>
+
+        <p class="hero-subtitle">
+          AI-Powered OSINT Intelligence Engine
+        </p>
+
+        <div class="typing">
+          <span id="typed-text"></span>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- SEARCH -->
+
+    <section class="search-section">
+
+      <div class="search-box">
+
+        <input
+          type="text"
+          id="targetInput"
+          placeholder="Enter IP, email, domain, username..."
+        />
+
+        <button id="scanBtn">
+          INITIATE SCAN
+        </button>
+
+      </div>
+
+    </section>
+
+    <!-- LIVE SCAN -->
+
+    <section class="live-scan">
+
+      <div class="section-title">
+        ACTIVE INTELLIGENCE COLLECTORS
+      </div>
+
+      <div class="collectors">
+
+        <div class="collector">
+          <div class="dot"></div>
+          Shodan Intelligence
+        </div>
+
+        <div class="collector">
+          <div class="dot"></div>
+          WHOIS Lookup
+        </div>
+
+        <div class="collector">
+          <div class="dot"></div>
+          Breach Analysis
+        </div>
+
+        <div class="collector">
+          <div class="dot"></div>
+          GitHub Intelligence
+        </div>
+
+        <div class="collector">
+          <div class="dot"></div>
+          Social Enumeration
+        </div>
+
+        <div class="collector">
+          <div class="dot"></div>
+          AI Threat Correlation
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- DASHBOARD GRID -->
+
+    <section class="dashboard-grid">
+
+      <!-- THREAT SCORE -->
+
+      <div class="card threat-card">
+
+        <div class="card-header">
+          THREAT SCORE
+        </div>
+
+        <div class="threat-circle">
+
+          <svg>
+            <circle cx="90" cy="90" r="70"></circle>
+            <circle cx="90" cy="90" r="70" class="progress"></circle>
+          </svg>
+
+          <div class="score">
+            82%
+          </div>
+
+        </div>
+
+        <div class="risk-level">
+          HIGH RISK
+        </div>
+
+      </div>
+
+      <!-- AI ANALYSIS -->
+
+      <div class="card ai-card">
+
+        <div class="card-header">
+          AI THREAT ANALYSIS
+        </div>
+
+        <div class="ai-pulse"></div>
+
+        <p>
+          ReconMind AI identified correlated threat vectors associated
+          with exposed infrastructure, leaked credentials,
+          vulnerable services, and suspicious digital activity.
+        </p>
+
+        <div class="analysis-grid">
+
+          <div class="analysis-item">
+            <span>Confidence</span>
+            <strong>94%</strong>
+          </div>
+
+          <div class="analysis-item">
+            <span>Severity</span>
+            <strong>Critical</strong>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- TERMINAL -->
+
+      <div class="card terminal-card">
+
+        <div class="terminal-top">
+          <span class="red"></span>
+          <span class="yellow"></span>
+          <span class="green"></span>
+        </div>
+
+        <div class="terminal-body" id="terminal">
+
+          <p>[INFO] ReconMind engine initialized...</p>
+          <p>[INFO] Connecting to OSINT collectors...</p>
+          <p>[INFO] AI correlation engine active...</p>
+
+        </div>
+
+      </div>
+
+      <!-- IP INTELLIGENCE -->
+
+      <div class="card">
+
+        <div class="card-header">
+          IP INTELLIGENCE
+        </div>
+
+        <div class="intel-item">
+          ISP:
+          <span>Cloudflare</span>
+        </div>
+
+        <div class="intel-item">
+          Country:
+          <span>Germany</span>
+        </div>
+
+        <div class="intel-item">
+          Open Ports:
+          <span>22, 80, 443</span>
+        </div>
+
+        <div class="intel-item">
+          Vulnerabilities:
+          <span class="danger">4 Critical</span>
+        </div>
+
+      </div>
+
+      <!-- EMAIL BREACH -->
+
+      <div class="card breach-card">
+
+        <div class="card-header">
+          EMAIL BREACH ANALYSIS
+        </div>
+
+        <div class="breach-list">
+
+          <div class="breach-item critical">
+            LinkedIn — Password Exposed
+          </div>
+
+          <div class="breach-item high">
+            Dropbox — Credential Leak
+          </div>
+
+          <div class="breach-item medium">
+            Adobe — Email Exposure
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- SOCIAL SCAN -->
+
+      <div class="card">
+
+        <div class="card-header">
+          SOCIAL ENUMERATION
+        </div>
+
+        <div class="platforms">
+
+          <span>GitHub</span>
+          <span>Twitter</span>
+          <span>Reddit</span>
+          <span>Telegram</span>
+          <span>LinkedIn</span>
+
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- CHART -->
+
+    <section class="chart-section card">
+
+      <div class="card-header">
+        THREAT DISTRIBUTION
+      </div>
+
+      <canvas id="riskChart"></canvas>
+
+    </section>
+
+  </main>
+
+  <script src="script.js"></script>
+
+</body>
+</html>
+```
