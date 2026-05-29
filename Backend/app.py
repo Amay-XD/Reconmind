@@ -38,7 +38,7 @@ from collectors.shodan_collector import collect_shodan
 from collectors.hibp_collector import HIBPCollector
 from collectors.whois_collector import WhoisCollector
 from collectors.github_collector import GitHubCollector
-from collectors.google_collector import collect_google
+from collectors.google_collector import GoogleDorkCollector
 from collectors.social_scan_collectors import SocialScanner
 
 from ai_engine.groq_analysis import analyse_with_groq
@@ -123,6 +123,8 @@ _hibp_collector = HIBPCollector()
 _whois_collector = WhoisCollector()
 _github_collector = GitHubCollector()
 _social_scanner = SocialScanner()
+_google_collector = GoogleDorkCollector()
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # COLLECTOR ROUTING
@@ -141,18 +143,19 @@ def _build_collector_tasks(
     elif input_type == "email":
         tasks["hibp"] = lambda: _hibp_collector.collect(target)
         tasks["social_scan"] = lambda: _social_scanner.collect(target)
-        tasks["google_dorks"] = lambda: collect_google(target)
+        tasks["google_dorks"] = lambda: _google_collector.collect(target)
 
     elif input_type == "domain":
         tasks["whois"] = lambda: _whois_collector.collect(target)
         tasks["shodan"] = lambda: collect_shodan(target)
-        tasks["google_dorks"] = lambda: collect_google(target)
+        tasks["google_dorks"] = lambda: _google_collector.collect(target)
         tasks["github"] = lambda: _github_collector.collect(target)
 
     elif input_type == "username":
         tasks["github"] = lambda: _github_collector.collect(target)
         tasks["social_scan"] = lambda: _social_scanner.collect(target)
-        tasks["google_dorks"] = lambda: collect_google(target)
+        tasks["google_dorks"] = lambda: _google_collector.collect(target)
+      
 
     return tasks
 
