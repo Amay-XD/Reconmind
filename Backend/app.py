@@ -64,7 +64,7 @@ app = Flask(__name__)
 CORS(app)
 
 # Security headers
-Talisman(app)
+Talisman(app, content_security_policy=False, force_https=False)
 
 # Rate limiting
 limiter = Limiter(
