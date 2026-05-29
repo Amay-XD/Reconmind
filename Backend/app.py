@@ -41,7 +41,7 @@ from collectors.github_collector import GitHubCollector
 from collectors.google_collector import GoogleDorkCollector
 from collectors.social_scan_collectors import SocialScanner
 
-from ai_engine.groq_analysis import analyse_with_groq
+from ai_engine.groq_analysis import analyze_target
 from output.pdf_export import export_pdf
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -325,7 +325,7 @@ def scan() -> Response:
 
     # AI Analysis
     try:
-        report = analyse_with_groq(ai_input)
+        report = analyze_target(ai_input)
 
     except Exception as exc:
         logger.error(
@@ -411,7 +411,7 @@ def scan_pdf() -> Response:
 
     # AI analysis
     try:
-        report = analyse_with_groq(ai_input)
+       report = analyze_target(ai_input)
 
     except Exception as exc:
         logger.error(
