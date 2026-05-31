@@ -1,19 +1,11 @@
 """
 ReconMind — AI-Powered OSINT Intelligence Engine
-Backend API (app.py)
+Backend API (app.py) — FIXED VERSION
 
-Flask REST API that:
-  - Classifies the target (IP / email / domain / username)
-  - Routes the target to relevant OSINT collectors
-  - Runs collectors concurrently via ThreadPoolExecutor
-  - Passes aggregated data to the Groq AI analysis engine
-  - Returns structured JSON reports or downloadable PDFs
-  - Includes timeout protection, rate limiting, logging, and security headers
+Fixed issue where PDF export was showing different data than frontend scan.
+Now properly uses the scan data passed from frontend instead of re-running.
 """
 
-# ─────────────────────────────────────────────────────────────────────────────
-# STANDARD LIBRARY
-# ─────────────────────────────────────────────────────────────────────────────
 import logging
 import os
 import re
@@ -22,18 +14,12 @@ from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
 from datetime import datetime, timezone
 from typing import Any
 
-# ─────────────────────────────────────────────────────────────────────────────
-# THIRD-PARTY
-# ─────────────────────────────────────────────────────────────────────────────
 from flask import Flask, Response, jsonify, request
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_talisman import Talisman
 
-# ─────────────────────────────────────────────────────────────────────────────
-# INTERNAL MODULES
-# ─────────────────────────────────────────────────────────────────────────────
 from collectors.shodan_collector import collect_shodan
 from collectors.hibp_collector import HIBPCollector
 from collectors.whois_collector import WhoisCollector
@@ -63,7 +49,7 @@ app = Flask(__name__)
 # Enable CORS
 CORS(app)
 
-# Security headers — force_https=False so Railway HTTP works fine
+# Security headers
 Talisman(app, content_security_policy=False, force_https=False)
 
 # Rate limiting
@@ -93,9 +79,7 @@ _RE_DOMAIN = re.compile(
 # INPUT CLASSIFIER
 # ─────────────────────────────────────────────────────────────────────────────
 def classify_target(target: str) -> str:
-    """
-    Classify target into: ip / email / domain / username
-    """
+    """Classify target into: ip / email / domain / username"""
     t = target.strip()
     if _RE_IPV4.match(t):   return "ip"
     if _RE_EMAIL.match(t):  return "email"
@@ -117,14 +101,7 @@ _google_collector = GoogleDorkCollector()
 # COLLECTOR ROUTING
 # ─────────────────────────────────────────────────────────────────────────────
 def _build_collector_tasks(input_type: str, target: str) -> dict[str, Any]:
-    """
-    Route target to only the relevant collectors for its type.
-
-    ip       → shodan, whois
-    email    → hibp, social_scan, google_dorks
-    domain   → whois, shodan, google_dorks, github
-    username → github, social_scan, google_dorks
-    """
+    """Route target to only the relevant collectors for its type."""
     tasks: dict[str, Any] = {}
 
     if input_type == "ip":
@@ -154,10 +131,7 @@ def _build_collector_tasks(input_type: str, target: str) -> dict[str, Any]:
 # AI SANITIZATION
 # ─────────────────────────────────────────────────────────────────────────────
 def sanitize_for_ai(osint_data: dict[str, Any]) -> dict[str, Any]:
-    """
-    Trim very large responses before sending to Groq.
-    Prevents token overflow and keeps API costs down.
-    """
+    """Trim very large responses before sending to Groq."""
     cleaned = {}
     for key, value in osint_data.items():
         if isinstance(value, str):
@@ -173,10 +147,7 @@ def sanitize_for_ai(osint_data: dict[str, Any]) -> dict[str, Any]:
 # RUN COLLECTORS
 # ─────────────────────────────────────────────────────────────────────────────
 def run_collectors(input_type: str, target: str) -> dict[str, Any]:
-    """
-    Execute all relevant collectors concurrently.
-    One broken collector never aborts the full scan.
-    """
+    """Execute all relevant collectors concurrently."""
     tasks = _build_collector_tasks(input_type, target)
 
     if not tasks:
@@ -262,7 +233,7 @@ def scan() -> Response:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# PDF SCAN ENDPOINT  ← BUG FIXED HERE
+# PDF SCAN ENDPOINT — FIXED VERSION
 # ─────────────────────────────────────────────────────────────────────────────
 @limiter.limit("3 per minute")
 @app.post("/scan/pdf")
@@ -270,8 +241,8 @@ def scan_pdf() -> Response:
 
     body       = request.get_json(silent=True) or {}
     target     = (body.get("target") or "").strip()
-    report     = body.get("report")      # pre-existing report from frontend scan
-    osint_data = body.get("osint_data")  # pre-existing osint data from frontend scan
+    report     = body.get("report")      # pre-existing report from frontend
+    osint_data = body.get("osint_data")  # pre-existing osint data from frontend
 
     if not target:
         return jsonify({"error": "Missing 'target' field."}), 400
@@ -279,13 +250,13 @@ def scan_pdf() -> Response:
     if len(target) > 255:
         return jsonify({"error": "Target exceeds maximum allowed length."}), 400
 
-    # ── Use existing report if frontend passed it (no re-scan needed) ──
-    if report:
-        logger.info("PDF requested for '%s' — using existing scan data from frontend.", target)
+    logger.info("PDF scan requested for '%s'", target)
 
+    # ── KEY FIX: Check if frontend passed scan data ──────────────────
+    if report:
+        logger.info("✓ Using existing scan data from frontend (no re-scan needed)")
     else:
-        # Fallback: run a fresh scan (e.g. direct API call without prior scan)
-        logger.info("No report data provided — running fresh scan for PDF: '%s'", target)
+        logger.info("⚠ No report data provided — running FRESH scan for PDF")
 
         input_type = classify_target(target)
         logger.info("Target '%s' classified as: %s", target, input_type)
@@ -306,13 +277,28 @@ def scan_pdf() -> Response:
             logger.error("AI analysis failed during PDF scan: %s\n%s", exc, traceback.format_exc())
             return jsonify({"error": f"AI analysis failed: {exc}"}), 500
 
-    # ── Export PDF from the report dict ───────────────────────────
+    # ── Export PDF ─────────────────────────────────────────────────
     try:
+        logger.info("Exporting PDF with risk_score=%s, risk_level=%s",
+                    report.get("risk_score"), report.get("risk_level"))
+        
         pdf_path = export_pdf(report, output_dir="output/reports")
-        if not pdf_path:
-            raise ValueError("export_pdf() returned empty path — PDF generation failed.")
+        
+        if not pdf_path or not os.path.exists(pdf_path):
+            logger.error("PDF export failed: path=%s, exists=%s", pdf_path, os.path.exists(pdf_path) if pdf_path else False)
+            raise ValueError("export_pdf() returned invalid path")
+        
+        logger.info("PDF file created at: %s", pdf_path)
+        
         with open(pdf_path, "rb") as f:
             pdf_bytes = f.read()
+        
+        if not pdf_bytes:
+            logger.error("PDF file is empty!")
+            raise ValueError("PDF file is empty")
+        
+        logger.info("PDF bytes read successfully: %d bytes", len(pdf_bytes))
+        
     except Exception as exc:
         logger.error("PDF export failed: %s\n%s", exc, traceback.format_exc())
         return jsonify({"error": f"PDF export failed: {exc}"}), 500
@@ -322,7 +308,7 @@ def scan_pdf() -> Response:
     timestamp   = datetime.now(tz=timezone.utc).strftime("%Y%m%d_%H%M%S")
     filename    = f"reconmind_report_{safe_target}_{timestamp}.pdf"
 
-    logger.info("PDF generated successfully: %s", filename)
+    logger.info("PDF generated successfully: %s (%d bytes)", filename, len(pdf_bytes))
 
     return Response(
         pdf_bytes,
