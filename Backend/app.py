@@ -63,7 +63,7 @@ app = Flask(__name__)
 # Enable CORS
 CORS(app)
 
-# Security headers
+# Security headers — force_https=False so Railway HTTP works fine
 Talisman(app, content_security_policy=False, force_https=False)
 
 # Rate limiting
@@ -86,8 +86,7 @@ _RE_EMAIL = re.compile(
 )
 
 _RE_DOMAIN = re.compile(
-    r"^(?:[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+"
-    r"[a-zA-Z]{2,}$"
+    r"^(?:[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$"
 )
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -95,67 +94,58 @@ _RE_DOMAIN = re.compile(
 # ─────────────────────────────────────────────────────────────────────────────
 def classify_target(target: str) -> str:
     """
-    Classify target into:
-      - ip
-      - email
-      - domain
-      - username
+    Classify target into: ip / email / domain / username
     """
-
     t = target.strip()
-
-    if _RE_IPV4.match(t):
-        return "ip"
-
-    if _RE_EMAIL.match(t):
-        return "email"
-
-    if _RE_DOMAIN.match(t):
-        return "domain"
-
+    if _RE_IPV4.match(t):   return "ip"
+    if _RE_EMAIL.match(t):  return "email"
+    if _RE_DOMAIN.match(t): return "domain"
     return "username"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # COLLECTOR INITIALIZATION
 # ─────────────────────────────────────────────────────────────────────────────
-_hibp_collector = HIBPCollector()
-_whois_collector = WhoisCollector()
+_hibp_collector   = HIBPCollector()
+_whois_collector  = WhoisCollector()
 _github_collector = GitHubCollector()
-_social_scanner = SocialScanner()
+_social_scanner   = SocialScanner()
 _google_collector = GoogleDorkCollector()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # COLLECTOR ROUTING
 # ─────────────────────────────────────────────────────────────────────────────
-def _build_collector_tasks(
-    input_type: str,
-    target: str
-) -> dict[str, Any]:
+def _build_collector_tasks(input_type: str, target: str) -> dict[str, Any]:
+    """
+    Route target to only the relevant collectors for its type.
 
+    ip       → shodan, whois
+    email    → hibp, social_scan, google_dorks
+    domain   → whois, shodan, google_dorks, github
+    username → github, social_scan, google_dorks
+    """
     tasks: dict[str, Any] = {}
 
     if input_type == "ip":
         tasks["shodan"] = lambda: collect_shodan(target)
-        tasks["whois"] = lambda: _whois_collector.collect(target)
+        tasks["whois"]  = lambda: _whois_collector.collect(target)
 
     elif input_type == "email":
-        tasks["hibp"] = lambda: _hibp_collector.collect(target)
-        tasks["social_scan"] = lambda: _social_scanner.collect(target)
+        tasks["hibp"]         = lambda: _hibp_collector.collect(target)
+        tasks["social_scan"]  = lambda: _social_scanner.collect(target)
         tasks["google_dorks"] = lambda: _google_collector.collect(target)
 
     elif input_type == "domain":
-        tasks["whois"] = lambda: _whois_collector.collect(target)
-        tasks["shodan"] = lambda: collect_shodan(target)
+        tasks["whois"]        = lambda: _whois_collector.collect(target)
+        tasks["shodan"]       = lambda: collect_shodan(target)
         tasks["google_dorks"] = lambda: _google_collector.collect(target)
-        tasks["github"] = lambda: _github_collector.collect(target)
+        tasks["github"]       = lambda: _github_collector.collect(target)
 
     elif input_type == "username":
-        tasks["github"] = lambda: _github_collector.collect(target)
-        tasks["social_scan"] = lambda: _social_scanner.collect(target)
+        tasks["github"]       = lambda: _github_collector.collect(target)
+        tasks["social_scan"]  = lambda: _social_scanner.collect(target)
         tasks["google_dorks"] = lambda: _google_collector.collect(target)
-      
 
     return tasks
 
@@ -165,90 +155,50 @@ def _build_collector_tasks(
 # ─────────────────────────────────────────────────────────────────────────────
 def sanitize_for_ai(osint_data: dict[str, Any]) -> dict[str, Any]:
     """
-    Trim extremely large responses before sending to Groq.
-    Prevents token explosions and API overuse.
+    Trim very large responses before sending to Groq.
+    Prevents token overflow and keeps API costs down.
     """
-
     cleaned = {}
-
     for key, value in osint_data.items():
-
-        # Convert huge strings into trimmed version
         if isinstance(value, str):
             cleaned[key] = value[:5000]
-
-        # Convert huge lists into first 25 entries
         elif isinstance(value, list):
             cleaned[key] = value[:25]
-
-        # Dicts stay as-is
         else:
             cleaned[key] = value
-
     return cleaned
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # RUN COLLECTORS
 # ─────────────────────────────────────────────────────────────────────────────
-def run_collectors(
-    input_type: str,
-    target: str
-) -> dict[str, Any]:
-
+def run_collectors(input_type: str, target: str) -> dict[str, Any]:
+    """
+    Execute all relevant collectors concurrently.
+    One broken collector never aborts the full scan.
+    """
     tasks = _build_collector_tasks(input_type, target)
 
     if not tasks:
-        raise ValueError(
-            f"No collectors available for input type: {input_type}"
-        )
+        raise ValueError(f"No collectors available for input type: {input_type}")
 
     osint_data: dict[str, Any] = {}
 
-    with ThreadPoolExecutor(
-        max_workers=len(tasks)
-    ) as executor:
-
-        future_to_key = {
-            executor.submit(fn): key
-            for key, fn in tasks.items()
-        }
+    with ThreadPoolExecutor(max_workers=len(tasks)) as executor:
+        future_to_key = {executor.submit(fn): key for key, fn in tasks.items()}
 
         for future in as_completed(future_to_key):
-
             key = future_to_key[future]
-
             try:
                 result = future.result(timeout=20)
-
                 osint_data[key] = result
-
-                logger.info(
-                    "Collector '%s' completed successfully.",
-                    key
-                )
-
+                logger.info("Collector '%s' completed successfully.", key)
             except TimeoutError:
-                logger.error(
-                    "Collector '%s' timed out.",
-                    key
-                )
-
-                osint_data[key] = {
-                    "error": "collector timeout"
-                }
-
+                logger.error("Collector '%s' timed out.", key)
+                osint_data[key] = {"error": "collector timeout"}
             except Exception as exc:
-                logger.error(
-                    "Collector '%s' failed: %s\n%s",
-                    key,
-                    exc,
-                    traceback.format_exc(),
-                )
-
-                osint_data[key] = {
-                    "error": str(exc)
-                }
+                logger.error("Collector '%s' failed: %s\n%s", key, exc, traceback.format_exc())
+                osint_data[key] = {"error": str(exc)}
 
     return osint_data
 
@@ -258,11 +208,7 @@ def run_collectors(
 # ─────────────────────────────────────────────────────────────────────────────
 @app.get("/health")
 def health() -> Response:
-
-    return jsonify({
-        "status": "ok",
-        "version": "2.0.0"
-    }), 200
+    return jsonify({"status": "ok", "version": "2.0.0"}), 200
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -272,206 +218,114 @@ def health() -> Response:
 @app.post("/scan")
 def scan() -> Response:
 
-    body = request.get_json(silent=True) or {}
+    body   = request.get_json(silent=True) or {}
+    target = (body.get("target") or "").strip()
 
-    target: str = (body.get("target") or "").strip()
-
-    # Validation
     if not target:
-        return jsonify({
-            "error": "Missing 'target' field."
-        }), 400
+        return jsonify({"error": "Missing 'target' field."}), 400
 
     if len(target) > 255:
-        return jsonify({
-            "error": "Target exceeds maximum allowed length."
-        }), 400
+        return jsonify({"error": "Target exceeds maximum allowed length."}), 400
 
     logger.info("New scan requested for: '%s'", target)
-
-    # Classify target
     input_type = classify_target(target)
+    logger.info("Target '%s' classified as: %s", target, input_type)
 
-    logger.info(
-        "Target '%s' classified as: %s",
-        target,
-        input_type
-    )
-
-    # Collect OSINT
+    # ── Collect OSINT ─────────────────────────────────────────────
     try:
-        osint_data = run_collectors(
-            input_type,
-            target
-        )
-
+        osint_data = run_collectors(input_type, target)
     except Exception as exc:
-        logger.error(
-            "Collection phase failed: %s\n%s",
-            exc,
-            traceback.format_exc(),
-        )
+        logger.error("Collection phase failed: %s\n%s", exc, traceback.format_exc())
+        return jsonify({"error": f"Collection failed: {exc}"}), 500
 
-        return jsonify({
-            "error": f"Collection failed: {exc}"
-        }), 500
-
-    # Add target metadata
-    osint_data["target"] = target
+    # ── Add metadata ──────────────────────────────────────────────
+    osint_data["target"]     = target
     osint_data["input_type"] = input_type
 
-    # Sanitize for AI
+    # ── Sanitize and analyse ──────────────────────────────────────
     ai_input = sanitize_for_ai(osint_data)
 
-    # AI Analysis
     try:
         report = analyze_target(ai_input)
-
     except Exception as exc:
-        logger.error(
-            "Groq analysis failed: %s\n%s",
-            exc,
-            traceback.format_exc(),
-        )
+        logger.error("Groq analysis failed: %s\n%s", exc, traceback.format_exc())
+        return jsonify({"error": f"AI analysis failed: {exc}"}), 500
 
-        return jsonify({
-            "error": f"AI analysis failed: {exc}"
-        }), 500
-
-    logger.info(
-        "Scan completed for '%s'",
-        target
-    )
+    logger.info("Scan completed for '%s'", target)
 
     return jsonify({
-        "target": target,
+        "target":     target,
         "input_type": input_type,
         "osint_data": osint_data,
-        "report": report,
+        "report":     report,
     }), 200
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# PDF SCAN ENDPOINT
+# PDF SCAN ENDPOINT  ← BUG FIXED HERE
 # ─────────────────────────────────────────────────────────────────────────────
 @limiter.limit("3 per minute")
 @app.post("/scan/pdf")
 def scan_pdf() -> Response:
 
-    body = request.get_json(silent=True) or {}
+    body   = request.get_json(silent=True) or {}
+    target = (body.get("target") or "").strip()
 
-    target: str = (body.get("target") or "").strip()
-
-    # Validation
     if not target:
-        return jsonify({
-            "error": "Missing 'target' field."
-        }), 400
+        return jsonify({"error": "Missing 'target' field."}), 400
 
     if len(target) > 255:
-        return jsonify({
-            "error": "Target exceeds maximum allowed length."
-        }), 400
+        return jsonify({"error": "Target exceeds maximum allowed length."}), 400
 
     logger.info("PDF scan requested for '%s'", target)
-
-    # Classify target
     input_type = classify_target(target)
+    logger.info("Target '%s' classified as: %s", target, input_type)
 
-    logger.info(
-        "Target '%s' classified as: %s",
-        target,
-        input_type
-    )
-
-    # Collect
+    # ── Collect ───────────────────────────────────────────────────
     try:
-        osint_data = run_collectors(
-            input_type,
-            target
-        )
-
+        osint_data = run_collectors(input_type, target)
     except Exception as exc:
-        logger.error(
-            "Collection failed during PDF scan: %s\n%s",
-            exc,
-            traceback.format_exc(),
-        )
+        logger.error("Collection failed during PDF scan: %s\n%s", exc, traceback.format_exc())
+        return jsonify({"error": f"Collection failed: {exc}"}), 500
 
-        return jsonify({
-            "error": f"Collection failed: {exc}"
-        }), 500
-
-    # Metadata
-    osint_data["target"] = target
+    osint_data["target"]     = target
     osint_data["input_type"] = input_type
-
-    # Sanitize for AI
     ai_input = sanitize_for_ai(osint_data)
 
-    # AI analysis
+    # ── AI Analysis ───────────────────────────────────────────────
     try:
-       report = analyze_target(ai_input)
-
+        report = analyze_target(ai_input)
     except Exception as exc:
-        logger.error(
-            "AI analysis failed during PDF scan: %s\n%s",
-            exc,
-            traceback.format_exc(),
-        )
+        logger.error("AI analysis failed during PDF scan: %s\n%s", exc, traceback.format_exc())
+        return jsonify({"error": f"AI analysis failed: {exc}"}), 500
 
-        return jsonify({
-            "error": f"AI analysis failed: {exc}"
-        }), 500
-
-    # Export PDF
+    # ── Export PDF ────────────────────────────────────────────────
+    # FIX: export_pdf() returns a FILE PATH (str), not bytes.
+    # We must pass output_dir as keyword arg, then read the file.
     try:
-        pdf_bytes: bytes = export_pdf(
-            report,
-            target
-        )
-
+        pdf_path = export_pdf(report, output_dir="output/reports")
+        if not pdf_path:
+            raise ValueError("export_pdf() returned empty path — PDF generation failed.")
+        with open(pdf_path, "rb") as f:
+            pdf_bytes = f.read()
     except Exception as exc:
-        logger.error(
-            "PDF export failed: %s\n%s",
-            exc,
-            traceback.format_exc(),
-        )
+        logger.error("PDF export failed: %s\n%s", exc, traceback.format_exc())
+        return jsonify({"error": f"PDF export failed: {exc}"}), 500
 
-        return jsonify({
-            "error": f"PDF export failed: {exc}"
-        }), 500
+    # ── Build filename and return ─────────────────────────────────
+    safe_target = re.sub(r"[^\w.\-]", "_", target)
+    timestamp   = datetime.now(tz=timezone.utc).strftime("%Y%m%d_%H%M%S")
+    filename    = f"reconmind_report_{safe_target}_{timestamp}.pdf"
 
-    # Safe filename
-    safe_target = re.sub(
-        r"[^\w.\-]",
-        "_",
-        target
-    )
-
-    timestamp = datetime.now(
-        tz=timezone.utc
-    ).strftime("%Y%m%d_%H%M%S")
-
-    filename = (
-        f"reconmind_report_"
-        f"{safe_target}_{timestamp}.pdf"
-    )
-
-    logger.info(
-        "PDF generated successfully: %s",
-        filename
-    )
+    logger.info("PDF generated successfully: %s", filename)
 
     return Response(
         pdf_bytes,
         status=200,
         mimetype="application/pdf",
         headers={
-            "Content-Disposition":
-                f'attachment; filename="{filename}"',
-            "Content-Length":
-                str(len(pdf_bytes)),
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Length": str(len(pdf_bytes)),
         },
     )
 
@@ -480,48 +334,7 @@ def scan_pdf() -> Response:
 # ENTRY POINT
 # ─────────────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-
-    # Railway / Render / Local
-    port = int(
-        os.environ.get("PORT", 5000)
-    )
-
-    debug_mode = (
-        os.environ.get(
-            "FLASK_DEBUG",
-            "false"
-        ).lower() == "true"
-    )
-
-    logger.info(
-        "Starting ReconMind API "
-        "on 0.0.0.0:%d (debug=%s)",
-        port,
-        debug_mode
-    )
-
-    app.run(
-        host="0.0.0.0",
-        port=port,
-        debug=debug_mode
-    )
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# REQUIREMENTS
-# ─────────────────────────────────────────────────────────────────────────────
-#
-# flask>=3.0.0
-# flask-cors>=4.0.0
-# flask-limiter>=3.5.0
-# flask-talisman>=1.1.0
-# requests>=2.31.0
-# shodan>=1.30.0
-# python-whois>=0.8.0
-# PyGithub>=2.1.1
-# groq>=0.5.0
-# reportlab>=4.0.0
-#
-# Production:
-# gunicorn app:app
-#
+    port       = int(os.environ.get("PORT", 5000))
+    debug_mode = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
+    logger.info("Starting ReconMind API on 0.0.0.0:%d (debug=%s)", port, debug_mode)
+    app.run(host="0.0.0.0", port=port, debug=debug_mode)
