@@ -268,8 +268,10 @@ def scan() -> Response:
 @app.post("/scan/pdf")
 def scan_pdf() -> Response:
 
-    body   = request.get_json(silent=True) or {}
-    target = (body.get("target") or "").strip()
+    body       = request.get_json(silent=True) or {}
+    target     = (body.get("target") or "").strip()
+    report     = body.get("report")      # pre-existing report from frontend scan
+    osint_data = body.get("osint_data")  # pre-existing osint data from frontend scan
 
     if not target:
         return jsonify({"error": "Missing 'target' field."}), 400
@@ -277,31 +279,34 @@ def scan_pdf() -> Response:
     if len(target) > 255:
         return jsonify({"error": "Target exceeds maximum allowed length."}), 400
 
-    logger.info("PDF scan requested for '%s'", target)
-    input_type = classify_target(target)
-    logger.info("Target '%s' classified as: %s", target, input_type)
+    # ── Use existing report if frontend passed it (no re-scan needed) ──
+    if report:
+        logger.info("PDF requested for '%s' — using existing scan data from frontend.", target)
 
-    # ── Collect ───────────────────────────────────────────────────
-    try:
-        osint_data = run_collectors(input_type, target)
-    except Exception as exc:
-        logger.error("Collection failed during PDF scan: %s\n%s", exc, traceback.format_exc())
-        return jsonify({"error": f"Collection failed: {exc}"}), 500
+    else:
+        # Fallback: run a fresh scan (e.g. direct API call without prior scan)
+        logger.info("No report data provided — running fresh scan for PDF: '%s'", target)
 
-    osint_data["target"]     = target
-    osint_data["input_type"] = input_type
-    ai_input = sanitize_for_ai(osint_data)
+        input_type = classify_target(target)
+        logger.info("Target '%s' classified as: %s", target, input_type)
 
-    # ── AI Analysis ───────────────────────────────────────────────
-    try:
-        report = analyze_target(ai_input)
-    except Exception as exc:
-        logger.error("AI analysis failed during PDF scan: %s\n%s", exc, traceback.format_exc())
-        return jsonify({"error": f"AI analysis failed: {exc}"}), 500
+        try:
+            osint_data = run_collectors(input_type, target)
+        except Exception as exc:
+            logger.error("Collection failed during PDF scan: %s\n%s", exc, traceback.format_exc())
+            return jsonify({"error": f"Collection failed: {exc}"}), 500
 
-    # ── Export PDF ────────────────────────────────────────────────
-    # FIX: export_pdf() returns a FILE PATH (str), not bytes.
-    # We must pass output_dir as keyword arg, then read the file.
+        osint_data["target"]     = target
+        osint_data["input_type"] = input_type
+        ai_input = sanitize_for_ai(osint_data)
+
+        try:
+            report = analyze_target(ai_input)
+        except Exception as exc:
+            logger.error("AI analysis failed during PDF scan: %s\n%s", exc, traceback.format_exc())
+            return jsonify({"error": f"AI analysis failed: {exc}"}), 500
+
+    # ── Export PDF from the report dict ───────────────────────────
     try:
         pdf_path = export_pdf(report, output_dir="output/reports")
         if not pdf_path:
