@@ -1,118 +1,97 @@
-/* ═══════════════════════════════════════════════════════════════
-   RECONMIND — Professional Frontend Script
-   AI-Powered OSINT Intelligence Engine
-   ═══════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════
+   RECONMIND — Dashboard Script
+   ═══════════════════════════════════════════ */
 
 'use strict';
 
-// ═══════════════════════════════════════════════════════════════
-// CONFIGURATION
-// ═══════════════════════════════════════════════════════════════
-
-const API_BASE = 'http://localhost:5000'; // Change to Railway URL for production
-
-// ═══════════════════════════════════════════════════════════════
-// STATE MANAGEMENT
-// ═══════════════════════════════════════════════════════════════
-
+// ── CONFIG ──────────────────────────────────
+const BASE_URL = 'http://localhost:5000';
 let scanCount = 0;
 let lastScanData = null;
+let riskChart = null;
+let uptimeSeconds = 0;
 let scanInProgress = false;
-let scanHistory = [];
 
-// ═══════════════════════════════════════════════════════════════
-// DOM REFERENCES
-// ═══════════════════════════════════════════════════════════════
+// ── DOM REFERENCES ───────────────────────────
+const targetInput     = document.getElementById('targetInput');
+const targetBadge     = document.getElementById('targetBadge');
+const targetBadgeText = document.getElementById('targetBadgeText');
+const scanBtn         = document.getElementById('scanBtn');
+const scanBtnText     = document.querySelector('.btn-scan-text');
+const scanBtnSpinner  = document.querySelector('.btn-scan-spinner');
+const terminalBody    = document.getElementById('terminalBody');
+const threatRing      = document.getElementById('threatRing');
+const threatScoreVal  = document.getElementById('threatScoreVal');
+const riskLabel       = document.getElementById('riskLabel');
+const aiBody          = document.getElementById('aiBody');
+const confidenceVal   = document.getElementById('confidenceVal');
+const severityVal     = document.getElementById('severityVal');
+const vectorsVal      = document.getElementById('vectorsVal');
+const intelISP        = document.getElementById('intelISP');
+const intelCountry    = document.getElementById('intelCountry');
+const intelCity       = document.getElementById('intelCity');
+const intelPorts      = document.getElementById('intelPorts');
+const intelCVE        = document.getElementById('intelCVE');
+const intelHost       = document.getElementById('intelHost');
+const breachList      = document.getElementById('breachList');
+const breachCount     = document.getElementById('breachCount');
+const socialGrid      = document.getElementById('socialGrid');
+const foundCount      = document.getElementById('foundCount');
+const statusDot       = document.getElementById('statusDot');
+const statusText      = document.getElementById('statusText');
+const scanCountEl     = document.getElementById('scanCount');
+const uptimeEl        = document.getElementById('uptimeCounter');
+const exportPdfBtn    = document.getElementById('exportPdfBtn');
+const exportJsonBtn   = document.getElementById('exportJsonBtn');
+const hamburger       = document.getElementById('hamburger');
+const sidebar         = document.getElementById('sidebar');
+const sidebarOverlay  = document.getElementById('sidebarOverlay');
+const chartTotalEl    = document.getElementById('chartTotal');
+const typedTextEl     = document.getElementById('typedText');
 
-const targetInput = document.getElementById('targetInput');
-const autoDetectBadge = document.getElementById('autoDetectBadge');
-const scanBtn = document.getElementById('scanBtn');
-const scanCountDisplay = document.getElementById('scanCountDisplay');
-const statusDot = document.getElementById('statusDot');
-const statusText = document.getElementById('statusText');
-
-const scanAnimation = document.getElementById('scanAnimation');
-const resultsSection = document.getElementById('resultsSection');
-const emptyState = document.getElementById('emptyState');
-
-const collectorsGrid = document.getElementById('collectorsGrid');
-const aiAnalysisPhase = document.getElementById('aiAnalysisPhase');
-const aiAnalysisText = document.getElementById('aiAnalysisText');
-
-const progressPhase = document.getElementById('progressPhase');
-const progressPercent = document.getElementById('progressPercent');
-const progressBar = document.getElementById('progressBar');
-
-// Results elements
-const gaugeProgress = document.getElementById('gaugeProgress');
-const gaugeText = document.getElementById('gaugeText');
-const threatLevel = document.getElementById('threatLevel');
-const threatSummary = document.getElementById('threatSummary');
-const summaryText = document.getElementById('summaryText');
-const findingsList = document.getElementById('findingsList');
-const threatsList = document.getElementById('threatsList');
-const recommendationsList = document.getElementById('recommendationsList');
-
-const shodanData = document.getElementById('shodan-data');
-const whoisData = document.getElementById('whois-data');
-const githubData = document.getElementById('github-data');
-const socialData = document.getElementById('social-data');
-
-const pdfBtn = document.getElementById('pdfBtn');
-const jsonBtn = document.getElementById('jsonBtn');
-const newScanBtn = document.getElementById('newScanBtn');
-
-const scanHistory_el = document.getElementById('scanHistory');
-const criticalAlert = document.getElementById('criticalAlert');
-const typewriterText = document.getElementById('typewriterText');
-
-// ═══════════════════════════════════════════════════════════════
-// PARTICLE CANVAS ANIMATION
-// ═══════════════════════════════════════════════════════════════
-
+// ── PARTICLE CANVAS ──────────────────────────
 (function initParticles() {
   const canvas = document.getElementById('particleCanvas');
   const ctx = canvas.getContext('2d');
   let particles = [];
-  const COUNT = 40;
+  const COUNT = 60;
 
   function resize() {
-    canvas.width = window.innerWidth;
+    canvas.width  = window.innerWidth;
     canvas.height = window.innerHeight;
   }
 
-  class Particle {
-    constructor() {
+  function Particle() {
+    this.reset();
+  }
+
+  Particle.prototype.reset = function() {
+    this.x = Math.random() * canvas.width;
+    this.y = Math.random() * canvas.height;
+    this.vx = (Math.random() - 0.5) * 0.3;
+    this.vy = (Math.random() - 0.5) * 0.3;
+    this.radius = Math.random() * 1.5 + 0.3;
+    this.alpha = Math.random() * 0.4 + 0.05;
+    this.color = Math.random() > 0.7 ? '#00FF9D' : '#00F5FF';
+  };
+
+  Particle.prototype.update = function() {
+    this.x += this.vx;
+    this.y += this.vy;
+    if (this.x < 0 || this.x > canvas.width ||
+        this.y < 0 || this.y > canvas.height) {
       this.reset();
     }
+  };
 
-    reset() {
-      this.x = Math.random() * canvas.width;
-      this.y = Math.random() * canvas.height;
-      this.vx = (Math.random() - 0.5) * 0.2;
-      this.vy = (Math.random() - 0.5) * 0.2;
-      this.radius = Math.random() * 1 + 0.3;
-      this.alpha = Math.random() * 0.3 + 0.05;
-      this.color = Math.random() > 0.6 ? '#00F5FF' : '#7c3aed';
-    }
-
-    update() {
-      this.x += this.vx;
-      this.y += this.vy;
-      if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) {
-        this.reset();
-      }
-    }
-
-    draw() {
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-      ctx.fillStyle = this.color;
-      ctx.globalAlpha = this.alpha;
-      ctx.fill();
-      ctx.globalAlpha = 1;
-    }
-  }
+  Particle.prototype.draw = function() {
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+    ctx.fillStyle = this.color;
+    ctx.globalAlpha = this.alpha;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  };
 
   function animate() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -123,12 +102,12 @@ const typewriterText = document.getElementById('typewriterText');
         const dx = particles[i].x - particles[j].x;
         const dy = particles[i].y - particles[j].y;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < 120) {
+        if (dist < 100) {
           ctx.beginPath();
           ctx.moveTo(particles[i].x, particles[i].y);
           ctx.lineTo(particles[j].x, particles[j].y);
           ctx.strokeStyle = '#00F5FF';
-          ctx.globalAlpha = (1 - dist / 120) * 0.06;
+          ctx.globalAlpha = (1 - dist / 100) * 0.08;
           ctx.lineWidth = 0.5;
           ctx.stroke();
           ctx.globalAlpha = 1;
@@ -136,10 +115,7 @@ const typewriterText = document.getElementById('typewriterText');
       }
     }
 
-    particles.forEach(p => {
-      p.update();
-      p.draw();
-    });
+    particles.forEach(p => { p.update(); p.draw(); });
     requestAnimationFrame(animate);
   }
 
@@ -149,438 +125,494 @@ const typewriterText = document.getElementById('typewriterText');
   window.addEventListener('resize', resize);
 })();
 
-// ═══════════════════════════════════════════════════════════════
-// TYPEWRITER EFFECT
-// ═══════════════════════════════════════════════════════════════
-
+// ── TYPEWRITER EFFECT ────────────────────────
 (function initTypewriter() {
   const phrases = [
-    'Scanning the digital footprint of any target...',
-    '6 collectors. 1 AI. Complete threat intelligence.',
-    'Know what the internet knows about you.',
-    'Real-time OSINT analysis powered by Groq AI',
+    'Scanning threat intelligence vectors...',
+    'Correlating digital attack surfaces...',
+    'Initializing AI threat analysis...',
+    'Enumerating exposed infrastructure...',
+    'Cross-referencing breach databases...',
   ];
 
   let phraseIdx = 0;
   let charIdx = 0;
-  let isErasing = false;
+  let erasing = false;
 
   function tick() {
     const current = phrases[phraseIdx];
-    if (!isErasing) {
-      typewriterText.textContent = current.slice(0, charIdx + 1);
+    if (!erasing) {
+      typedTextEl.textContent = current.slice(0, charIdx + 1);
       charIdx++;
       if (charIdx >= current.length) {
-        isErasing = true;
-        setTimeout(tick, 2500);
+        erasing = true;
+        setTimeout(tick, 2200);
         return;
       }
-      setTimeout(tick, 40);
+      setTimeout(tick, 48);
     } else {
-      typewriterText.textContent = current.slice(0, charIdx - 1);
+      typedTextEl.textContent = current.slice(0, charIdx - 1);
       charIdx--;
       if (charIdx <= 0) {
-        isErasing = false;
+        erasing = false;
         phraseIdx = (phraseIdx + 1) % phrases.length;
-        setTimeout(tick, 300);
+        setTimeout(tick, 400);
         return;
       }
-      setTimeout(tick, 20);
+      setTimeout(tick, 28);
     }
   }
 
   setTimeout(tick, 600);
 })();
 
-// ═══════════════════════════════════════════════════════════════
-// TARGET TYPE DETECTION
-// ═══════════════════════════════════════════════════════════════
-
-const RE_IPV4 = /^((25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\.){3}(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)$/;
-const RE_EMAIL = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
-const RE_DOMAIN = /^(?:[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/;
+// ── TARGET TYPE DETECTION ────────────────────
+const RE_IPV4     = /^((25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\.){3}(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)$/;
+const RE_EMAIL    = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
+const RE_DOMAIN   = /^(?:[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/;
 
 function detectTargetType(val) {
   const v = val.trim();
   if (!v) return 'idle';
-  if (RE_IPV4.test(v)) return 'ip';
-  if (RE_EMAIL.test(v)) return 'email';
+  if (RE_IPV4.test(v))   return 'ip';
+  if (RE_EMAIL.test(v))  return 'email';
   if (RE_DOMAIN.test(v)) return 'domain';
   return 'username';
 }
 
 const TYPE_LABELS = {
-  idle: 'AWAITING INPUT',
-  ip: '◈ IP ADDRESS',
-  email: '◉ EMAIL',
-  domain: '◎ DOMAIN',
+  idle:     'AWAITING INPUT',
+  ip:       '◈ IP ADDRESS',
+  email:    '◉ EMAIL',
+  domain:   '◎ DOMAIN',
   username: '▣ USERNAME',
 };
 
 targetInput.addEventListener('input', () => {
   const type = detectTargetType(targetInput.value);
-  autoDetectBadge.textContent = TYPE_LABELS[type];
-  autoDetectBadge.setAttribute('data-type', type);
+  targetBadge.dataset.type = type;
+  targetBadgeText.textContent = TYPE_LABELS[type];
 });
 
-// ═══════════════════════════════════════════════════════════════
-// HEALTH CHECK
-// ═══════════════════════════════════════════════════════════════
+// ── UPTIME COUNTER ───────────────────────────
+setInterval(() => {
+  uptimeSeconds++;
+  const h = String(Math.floor(uptimeSeconds / 3600)).padStart(2, '0');
+  const m = String(Math.floor((uptimeSeconds % 3600) / 60)).padStart(2, '0');
+  const s = String(uptimeSeconds % 60).padStart(2, '0');
+  if (uptimeEl) uptimeEl.textContent = `${h}:${m}:${s}`;
+}, 1000);
 
+// ── HEALTH CHECK ─────────────────────────────
 async function checkHealth() {
   try {
-    const res = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(5000) });
+    const res = await fetch(`${BASE_URL}/health`, { signal: AbortSignal.timeout(5000) });
     if (res.ok) {
       statusDot.classList.remove('offline');
       statusText.textContent = 'ONLINE';
+      statusText.className = 'status-online';
     } else throw new Error();
   } catch {
     statusDot.classList.add('offline');
     statusText.textContent = 'OFFLINE';
+    statusText.className = 'status-offline';
+    addTermLine('[WARN] Backend API unreachable — demo mode active', 'warn');
   }
 }
-
 checkHealth();
-setInterval(checkHealth, 30000);
 
-// ═══════════════════════════════════════════════════════════════
-// SCANNING ANIMATION PHASES
-// ═══════════════════════════════════════════════════════════════
+// ── TERMINAL ────────────────────────────────
+const MAX_TERM_LINES = 50;
 
-async function animatePhase1() {
-  // INITIALIZING
-  progressPhase.textContent = 'INITIALIZING';
-  progressPercent.textContent = '0%';
-  progressBar.style.width = '0%';
+function addTermLine(text, type = 'success') {
+  const p = document.createElement('div');
+  p.className = `term-line ${type}`;
+  const ts = new Date().toLocaleTimeString('en-US', { hour12: false });
+  p.textContent = `[${ts}] ${text}`;
+  terminalBody.appendChild(p);
 
-  await new Promise(resolve => setTimeout(resolve, 500));
+  // Auto-scroll to latest
+  terminalBody.scrollTop = terminalBody.scrollHeight;
 
-  progressBar.style.width = '5%';
-  progressPercent.textContent = '5%';
-  await new Promise(resolve => setTimeout(resolve, 500));
-}
-
-async function animatePhase2(collectors) {
-  // COLLECTING
-  progressPhase.textContent = 'COLLECTING';
-  progressBar.style.width = '10%';
-  progressPercent.textContent = '10%';
-
-  const collectorElements = {
-    shodan: collectorsGrid.querySelector('[data-collector="shodan"]'),
-    whois: collectorsGrid.querySelector('[data-collector="whois"]'),
-    hibp: collectorsGrid.querySelector('[data-collector="hibp"]'),
-    github: collectorsGrid.querySelector('[data-collector="github"]'),
-    google: collectorsGrid.querySelector('[data-collector="google"]'),
-    social_scan: collectorsGrid.querySelector('[data-collector="social_scan"]'),
-  };
-
-  // Simulate staggered collector completion
-  let progressIncrement = 60 / collectors.length;
-  for (let i = 0; i < collectors.length; i++) {
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    const collectorName = collectors[i];
-    const el = collectorElements[collectorName];
-    if (el) {
-      el.classList.add('complete');
-      el.querySelector('.progress-mini').style.width = '100%';
-    }
-
-    const newProgress = Math.min(70, 10 + (i + 1) * progressIncrement);
-    progressBar.style.width = newProgress + '%';
-    progressPercent.textContent = Math.round(newProgress) + '%';
+  // Limit lines
+  const lines = terminalBody.querySelectorAll('.term-line');
+  if (lines.length > MAX_TERM_LINES) {
+    lines[0].remove();
   }
 }
 
-async function animatePhase3() {
-  // AI ANALYSIS
-  progressPhase.textContent = 'AI ANALYSIS';
-  aiAnalysisPhase.style.display = 'block';
-  progressBar.style.width = '80%';
-  progressPercent.textContent = '80%';
+// ── THREAT SCORE ─────────────────────────────
+function setThreatScore(score) {
+  const max = 100;
+  const radius = 80;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (score / max) * circumference;
 
-  // Simulate AI analysis text
-  const analysisTexts = [
-    'Correlating 6 data sources...',
-    'Identifying attack vectors...',
-    'Calculating risk score...',
-    'Generating recommendations...',
-    'Finalizing threat assessment...',
-  ];
+  threatRing.setAttribute('stroke-dashoffset', offset);
+  threatScoreVal.textContent = Math.round(score);
 
-  for (const text of analysisTexts) {
-    aiAnalysisText.textContent = text;
-    await new Promise(resolve => setTimeout(resolve, 800));
-  }
-
-  progressBar.style.width = '95%';
-  progressPercent.textContent = '95%';
-}
-
-async function animatePhase4() {
-  // COMPLETE
-  progressPhase.textContent = 'COMPLETE';
-  progressBar.style.width = '100%';
-  progressPercent.textContent = '100%';
-  progressBar.style.background = 'linear-gradient(90deg, #10b981, #059669)';
-
-  await new Promise(resolve => setTimeout(resolve, 500));
-}
-
-// ═══════════════════════════════════════════════════════════════
-// THREAT GAUGE ANIMATION
-// ═══════════════════════════════════════════════════════════════
-
-function animateThreatGauge(score) {
-  return new Promise(resolve => {
-    let currentScore = 0;
-    const targetScore = score;
-    const duration = 2000; // 2 seconds
-    const startTime = Date.now();
-
-    function update() {
-      const elapsed = Date.now() - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-
-      currentScore = Math.round(targetScore * progress);
-      gaugeText.textContent = currentScore;
-
-      // Update gauge progress
-      const circumference = 565;
-      const offset = circumference - (progress * circumference);
-      gaugeProgress.style.strokeDashoffset = offset;
-
-      // Update gauge color based on score
-      let color = '#10b981'; // Low - Green
-      if (targetScore >= 80) color = '#ef4444'; // Critical - Red
-      else if (targetScore >= 60) color = '#ef4444'; // High - Red
-      else if (targetScore >= 35) color = '#f59e0b'; // Medium - Amber
-
-      gaugeProgress.style.stroke = color;
-
-      if (progress < 1) {
-        requestAnimationFrame(update);
-      } else {
-        resolve();
-      }
-    }
-
-    requestAnimationFrame(update);
-  });
-}
-
-// ═══════════════════════════════════════════════════════════════
-// RENDER RESULTS
-// ═══════════════════════════════════════════════════════════════
-
-function renderResults(data) {
-  const report = data.report || {};
-  const osintData = data.osint_data || {};
-
-  // Threat Score
-  const riskScore = report.risk_score || 0;
-  const riskLevelMap = {
-    low: { label: 'LOW', color: '#10b981' },
-    medium: { label: 'MEDIUM', color: '#f59e0b' },
-    high: { label: 'HIGH', color: '#ef4444' },
-    critical: { label: 'CRITICAL', color: '#ef4444' },
-  };
-
-  const riskLevel = report.risk_level || 'low';
-  const riskInfo = riskLevelMap[riskLevel] || riskLevelMap.low;
-
-  threatLevel.textContent = riskInfo.label;
-  threatLevel.className = `threat-level ${riskLevel}`;
-  threatSummary.textContent = report.summary || 'No summary available.';
-
-  // Animate gauge
-  animateThreatGauge(riskScore);
-
-  // Executive Summary
-  summaryText.textContent = report.summary || 'Analysis complete. Review findings and recommendations below.';
-
-  // Key Findings
-  findingsList.innerHTML = '';
-  if (report.findings && Array.isArray(report.findings)) {
-    report.findings.forEach((finding, idx) => {
-      const item = document.createElement('div');
-      item.className = 'finding-item';
-      item.innerHTML = `
-        <div class="finding-icon">⚠</div>
-        <div class="finding-text">
-          <strong>[${String(idx + 1).padStart(2, '0')}]</strong> ${finding}
-        </div>
-        <button class="copy-btn" title="Copy">📋</button>
-      `;
-      item.querySelector('.copy-btn').addEventListener('click', () => {
-        copyToClipboard(finding);
-      });
-      findingsList.appendChild(item);
-    });
-  }
-
-  // Threats Identified
-  threatsList.innerHTML = '';
-  if (report.threats && Array.isArray(report.threats)) {
-    report.threats.forEach((threat) => {
-      const item = document.createElement('div');
-      item.className = 'threat-item';
-      item.innerHTML = `
-        <div class="threat-icon">☠</div>
-        <div class="threat-text">${threat}</div>
-        <button class="copy-btn" title="Copy">📋</button>
-      `;
-      item.querySelector('.copy-btn').addEventListener('click', () => {
-        copyToClipboard(threat);
-      });
-      threatsList.appendChild(item);
-    });
-  }
-
-  // Recommendations
-  recommendationsList.innerHTML = '';
-  if (report.recommendations && Array.isArray(report.recommendations)) {
-    report.recommendations.forEach((rec, idx) => {
-      const item = document.createElement('div');
-      item.className = 'recommendation-item';
-      item.innerHTML = `
-        <div class="recommendation-icon">✓</div>
-        <div class="recommendation-text">
-          <strong>[${String(idx + 1).padStart(2, '0')}]</strong> ${rec}
-        </div>
-        <button class="copy-btn" title="Copy">📋</button>
-      `;
-      item.querySelector('.copy-btn').addEventListener('click', () => {
-        copyToClipboard(rec);
-      });
-      recommendationsList.appendChild(item);
-    });
-  }
-
-  // OSINT Data
-  renderOsintData('shodan', osintData.shodan || {}, shodanData);
-  renderOsintData('whois', osintData.whois || {}, whoisData);
-  renderOsintData('github', osintData.github || {}, githubData);
-  renderOsintData('social_scan', osintData.social_scan || {}, socialData);
-
-  // Critical Alert
-  if (riskLevel === 'critical') {
-    criticalAlert.style.display = 'flex';
+  // Update color and label
+  if (score < 35) {
+    threatRing.style.stroke = '#10B981';
+    riskLabel.textContent = 'LOW RISK';
+    riskLabel.style.color = '#10B981';
+  } else if (score < 60) {
+    threatRing.style.stroke = '#F59E0B';
+    riskLabel.textContent = 'MEDIUM RISK';
+    riskLabel.style.color = '#F59E0B';
+  } else if (score < 80) {
+    threatRing.style.stroke = '#EF4444';
+    riskLabel.textContent = 'HIGH RISK';
+    riskLabel.style.color = '#EF4444';
   } else {
-    criticalAlert.style.display = 'none';
+    threatRing.style.stroke = '#DC2626';
+    riskLabel.textContent = 'CRITICAL';
+    riskLabel.style.color = '#DC2626';
   }
 }
 
-function renderOsintData(name, data, container) {
-  container.innerHTML = '';
+// ── RENDER FUNCTIONS ─────────────────────────
+function renderIPIntel(data) {
+  if (!data) return;
+  intelISP.textContent = data.isp || '—';
+  intelCountry.textContent = data.country || '—';
+  intelCity.textContent = data.city || '—';
+  intelPorts.textContent = data.ports ? data.ports.length : '—';
+  intelCVE.textContent = data.vulns ? Object.keys(data.vulns).length : '—';
+  intelHost.textContent = data.hostnames ? data.hostnames.join(', ') : '—';
+}
 
-  if (!data || Object.keys(data).length === 0) {
-    container.innerHTML = '<div style="padding: 12px; color: var(--text-secondary);">No data available</div>';
+function renderBreachList(breaches) {
+  breachList.innerHTML = '';
+  if (!Array.isArray(breaches) || breaches.length === 0) {
+    breachList.innerHTML = '<div class="breach-empty">No breaches found.</div>';
+    breachCount.textContent = '0 breaches';
     return;
   }
-
-  const lines = [];
-  Object.entries(data).forEach(([key, value]) => {
-    let displayValue = value;
-    if (Array.isArray(value)) {
-      displayValue = value.join(', ');
-    } else if (typeof value === 'object') {
-      displayValue = JSON.stringify(value);
-    }
-    lines.push(`<div class="osint-item"><span class="osint-key">${key}:</span> <span class="osint-value">${displayValue}</span></div>`);
+  breaches.forEach(breach => {
+    const div = document.createElement('div');
+    div.className = 'breach-item';
+    div.innerHTML = `<span>${breach.name}</span><span class="date">${breach.date || 'Unknown'}</span>`;
+    breachList.appendChild(div);
   });
-
-  container.innerHTML = lines.join('');
+  breachCount.textContent = `${breaches.length} breaches`;
 }
 
-// ═══════════════════════════════════════════════════════════════
-// OSINT DATA TOGGLE
-// ═══════════════════════════════════════════════════════════════
-
-document.querySelectorAll('.osint-card .card-header.clickable').forEach(header => {
-  header.addEventListener('click', () => {
-    const toggle = header.getAttribute('data-toggle');
-    const content = document.getElementById(toggle);
-    const isOpen = content.style.display !== 'none';
-
-    content.style.display = isOpen ? 'none' : 'block';
-    header.classList.toggle('open');
+function renderSocialPlatforms(social) {
+  if (!social) return;
+  const chips = document.querySelectorAll('.platform-chip');
+  chips.forEach(chip => {
+    const platform = chip.dataset.platform;
+    const found = social[platform];
+    if (found) {
+      chip.dataset.found = 'true';
+      chip.style.opacity = '1';
+    } else {
+      chip.data.found = 'false';
+      chip.style.opacity = '0.3';
+    }
   });
+  const count = Object.values(social).filter(v => v).length;
+  foundCount.textContent = `${count} found`;
+}
+
+function renderAIReport(report) {
+  if (!report) return;
+  aiBody.innerHTML = '';
+  const summary = report.summary || report.analysis || 'No analysis available.';
+  aiBody.innerHTML = `<p>${summary}</p>`;
+  confidenceVal.textContent = report.confidence ? `${report.confidence}%` : '—';
+  severityVal.textContent = report.severity || '—';
+  vectorsVal.textContent = report.vectors || '—';
+}
+
+function loadDemoData(target) {
+  const demoReport = {
+    summary: `Demo analysis for ${target}. In production, this would contain real threat intelligence from Groq AI.`,
+    confidence: 85,
+    severity: 'MEDIUM',
+    vectors: 4,
+  };
+
+  const demoOSINT = {
+    shodan: { isp: 'Example ISP', country: 'US', city: 'Unknown', ports: [80, 443], vulns: {} },
+    hibp: ['Demo Breach 1'],
+    social_scan: { github: true, twitter: false },
+  };
+
+  renderAIReport(demoReport);
+  renderIPIntel(demoOSINT.shodan);
+  renderBreachList(demoOSINT.hibp);
+  renderSocialPlatforms(demoOSINT.social_scan);
+  setThreatScore(45);
+}
+
+// ── CHART ────────────────────────────────────
+function updateChart(critical, high, medium, low) {
+  const ctx = document.getElementById('riskChart');
+  if (!ctx) return;
+
+  if (riskChart) riskChart.destroy();
+
+  riskChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Critical', 'High', 'Medium', 'Low'],
+      datasets: [{
+        data: [critical, high, medium, low],
+        backgroundColor: ['#DC2626', '#EF4444', '#F59E0B', '#10B981'],
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: { legend: { display: false } },
+    },
+  });
+
+  const total = critical + high + medium + low;
+  chartTotalEl.textContent = total;
+}
+
+// ── COLLECTOR CHIPS ──────────────────────────
+function activateChipsStaggered(collectors) {
+  const chips = document.querySelectorAll('.chip');
+  collectors.forEach((col, i) => {
+    setTimeout(() => {
+      const chip = document.querySelector(`[data-collector="${col}"]`);
+      if (chip) {
+        chip.classList.add('active');
+        chip.querySelector('.chip-status').textContent = 'RUNNING';
+      }
+    }, i * 300);
+  });
+}
+
+function completeChipsStaggered(collectors) {
+  const chips = document.querySelectorAll('.chip');
+  collectors.forEach((col, i) => {
+    setTimeout(() => {
+      const chip = document.querySelector(`[data-collector="${col}"]`);
+      if (chip) {
+        chip.classList.remove('active');
+        chip.classList.add('complete');
+        chip.querySelector('.chip-status').textContent = 'COMPLETE';
+      }
+    }, i * 200);
+  });
+}
+
+// ── PERFORM SCAN ─────────────────────────────
+async function performScan(target) {
+  if (scanInProgress) return;
+  scanInProgress = true;
+
+  const type = detectTargetType(target);
+  const activeCollectors = ['shodan', 'whois', 'hibp', 'github', 'google', 'social_scan'];
+
+  scanBtn.disabled = true;
+  scanBtnText.textContent = 'INITIATING...';
+  scanBtnSpinner.hidden = false;
+  scanBtn.style.background = '#FF3B3B';
+  scanBtn.style.boxShadow = '0 0 24px rgba(255,59,59,0.4)';
+
+  addTermLine(`Initiating scan for: ${target} [${type.toUpperCase()}]`, 'info');
+  addTermLine(`Classifying target... → ${type}`, 'info');
+
+  activateChipsStaggered(activeCollectors);
+  activeCollectors.forEach((col, i) => {
+    setTimeout(() => addTermLine(`[INIT] ${col.toUpperCase()} collector started`, 'info'), 300 + i * 200);
+  });
+
+  try {
+    const response = await fetch(`${BASE_URL}/scan`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ target }),
+      signal: AbortSignal.timeout(30000),
+    });
+
+    if (response.status === 429) {
+      showToast('Rate limit reached. Please wait before scanning again.', 'error');
+      addTermLine('[ERROR] Rate limit exceeded — retry in 60s', 'error');
+      throw new Error('rate_limit');
+    }
+
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    const data = await response.json();
+    lastScanData = data;
+
+    completeChipsStaggered(activeCollectors);
+    addTermLine('[SUCCESS] All collectors completed', 'success');
+    addTermLine('[AI] Groq analysis engine processing...', 'info');
+
+    // Populate cards
+    if (data.osint_data) {
+      renderIPIntel(data.osint_data.shodan);
+      renderBreachList(data.osint_data.hibp);
+      renderSocialPlatforms(data.osint_data.social_scan);
+    }
+
+    if (data.report) {
+      renderAIReport(data.report);
+      addTermLine('[AI] Threat analysis complete', 'success');
+    }
+
+    // Derive threat score from data
+    const breaches = Array.isArray(data.osint_data?.hibp) ? data.osint_data.hibp.length : 0;
+    const vulns = data.osint_data?.shodan?.vulns ? Object.keys(data.osint_data.shodan.vulns).length : 0;
+    const score = Math.min(95, 30 + breaches * 8 + vulns * 5);
+    setThreatScore(score);
+    updateChart(
+      vulns,
+      Math.max(0, breaches - vulns),
+      Math.max(1, breaches),
+      Math.max(1, 3)
+    );
+
+    scanCount++;
+    scanCountEl.textContent = scanCount;
+    showToast(`Scan complete for ${target}`, 'success');
+    addTermLine(`[DONE] Report generated for ${target}`, 'success');
+
+  } catch (err) {
+    if (err.message === 'rate_limit') {
+      // already handled
+    } else if (err.name === 'TimeoutError' || err.message.includes('timeout')) {
+      addTermLine('[WARN] API timeout — loading demo data', 'warn');
+      showToast('Backend timed out. Loading demo data.', 'info');
+      loadDemoData(target);
+      completeChipsStaggered(activeCollectors);
+      scanCount++;
+      scanCountEl.textContent = scanCount;
+    } else {
+      addTermLine(`[WARN] API unavailable — demo mode`, 'warn');
+      showToast('Backend offline. Showing demo data.', 'info');
+      loadDemoData(target);
+      completeChipsStaggered(activeCollectors);
+      scanCount++;
+      scanCountEl.textContent = scanCount;
+    }
+  } finally {
+    // Reset button
+    setTimeout(() => {
+      scanBtnText.textContent = 'SCAN COMPLETE';
+      scanBtn.style.background = '#00FF9D';
+      scanBtn.style.boxShadow = '0 0 24px rgba(0,255,157,0.4)';
+      scanBtnSpinner.hidden = true;
+
+      setTimeout(() => {
+        scanBtnText.textContent = 'INITIATE SCAN';
+        scanBtn.style.background = '';
+        scanBtn.style.boxShadow = '';
+        scanBtn.disabled = false;
+        scanInProgress = false;
+      }, 3000);
+    }, 500);
+  }
+}
+
+// ── SCAN BUTTON ───────────────────────────────
+scanBtn.addEventListener('click', () => {
+  const target = targetInput.value.trim();
+  if (!target) {
+    targetInput.focus();
+    targetInput.style.borderColor = 'var(--red)';
+    setTimeout(() => targetInput.style.borderColor = '', 1200);
+    showToast('Please enter a target to scan.', 'error');
+    return;
+  }
+  performScan(target);
+});
+
+targetInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') scanBtn.click();
 });
 
 // ═══════════════════════════════════════════════════════════════
-// COPY TO CLIPBOARD
+// ── PDF EXPORT - UPDATED VERSION ────────────────────────────────
 // ═══════════════════════════════════════════════════════════════
 
-function copyToClipboard(text) {
-  navigator.clipboard.writeText(text).then(() => {
-    showToast('Copied to clipboard', 'success');
-  }).catch(() => {
-    showToast('Failed to copy', 'error');
-  });
-}
+exportPdfBtn.addEventListener('click', async () => {
+  const target = lastScanData?.target || targetInput.value.trim();
+  if (!target) {
+    showToast('Run a scan first.', 'error');
+    return;
+  }
 
-// ═══════════════════════════════════════════════════════════════
-// SCAN HISTORY
-// ═══════════════════════════════════════════════════════════════
+  exportPdfBtn.disabled = true;
+  exportPdfBtn.innerHTML = '<span>⏳</span> GENERATING...';
 
-function addToScanHistory(target, riskLevel, riskScore) {
-  const now = new Date();
-  const dateStr = now.toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-
-  const entry = {
-    target,
-    riskLevel,
-    riskScore,
-    date: dateStr,
-    timestamp: now.getTime(),
-  };
-
-  scanHistory.unshift(entry);
-  if (scanHistory.length > 5) scanHistory.pop();
-
-  renderScanHistory();
-}
-
-function renderScanHistory() {
-  scanHistory_el.innerHTML = '';
-  scanHistory.forEach(entry => {
-    const item = document.createElement('div');
-    item.className = 'scan-history-item';
-    item.innerHTML = `
-      <div>
-        <span class="history-target">${entry.target}</span>
-      </div>
-      <div style="display: flex; gap: 12px; align-items: center;">
-        <span class="history-badge ${entry.riskLevel}">${entry.riskLevel.toUpperCase()}</span>
-        <span class="history-date">${entry.date}</span>
-      </div>
-    `;
-    item.addEventListener('click', () => {
-      targetInput.value = entry.target;
-      targetInput.dispatchEvent(new Event('input'));
-      window.scrollTo(0, 0);
+  try {
+    const res = await fetch(`${BASE_URL}/scan/pdf`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        target: lastScanData?.target || target,
+        report: lastScanData?.report || null,
+        osint_data: lastScanData?.osint_data || null,
+      }),
+      signal: AbortSignal.timeout(30000),
     });
-    scanHistory_el.appendChild(item);
-  });
-}
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `reconmind_report_${target.replace(/[^\w.-]/g, '_')}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('PDF exported successfully.', 'success');
+  } catch (error) {
+    console.error('PDF export error:', error);
+    showToast('PDF export failed. Backend may be offline.', 'error');
+  } finally {
+    exportPdfBtn.disabled = false;
+    exportPdfBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M12 18v-6M9 15l3 3 3-3"/></svg> EXPORT PDF`;
+  }
+});
 
 // ═══════════════════════════════════════════════════════════════
-// TOAST NOTIFICATION
+// ── JSON EXPORT - UPDATED VERSION ───────────────────────────────
 // ═══════════════════════════════════════════════════════════════
 
+exportJsonBtn.addEventListener('click', () => {
+  if (!lastScanData) {
+    showToast('Run a scan first.', 'error');
+    return;
+  }
+
+  try {
+    const dataToExport = {
+      metadata: {
+        exportDate: new Date().toISOString(),
+        target: lastScanData.target || targetInput.value.trim(),
+        version: '2.0.0',
+      },
+      report: lastScanData.report || {},
+      osint_data: lastScanData.osint_data || {},
+    };
+
+    const blob = new Blob([JSON.stringify(dataToExport, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const target = (lastScanData.target || 'scan').replace(/[^\w.-]/g, '_');
+    a.download = `reconmind_${target}_${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('JSON downloaded successfully.', 'success');
+  } catch (error) {
+    console.error('JSON export error:', error);
+    showToast('JSON export failed.', 'error');
+  }
+});
+
+// ── TOAST SYSTEM ──────────────────────────────
 function showToast(message, type = 'info') {
-  const icons = { error: '✕', success: '✓', info: 'ℹ' };
-  const toast = document.createElement('div');
-  toast.className = `toast ${type}`;
-  toast.innerHTML = `<span>${icons[type]}</span><span>${message}</span>`;
-
   let container = document.querySelector('.toast-container');
   if (!container) {
     container = document.createElement('div');
@@ -588,6 +620,10 @@ function showToast(message, type = 'info') {
     document.body.appendChild(container);
   }
 
+  const icons = { error: '✕', success: '✓', info: 'ℹ' };
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.innerHTML = `<span>${icons[type]}</span><span>${message}</span>`;
   container.appendChild(toast);
 
   setTimeout(() => {
@@ -598,239 +634,64 @@ function showToast(message, type = 'info') {
   }, 4000);
 }
 
-// Add toast styles
-const toastStyle = document.createElement('style');
-toastStyle.textContent = `
-  .toast-container {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    z-index: 10000;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
+// ── SIDEBAR (MOBILE) ──────────────────────────
+hamburger.addEventListener('click', () => {
+  sidebar.classList.toggle('open');
+  sidebarOverlay.classList.toggle('open');
+});
 
-  .toast {
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    color: var(--text-primary);
-    padding: 12px 16px;
-    border-radius: 6px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 13px;
-    animation: slideInRight 0.3s ease-out;
-    font-family: 'Orbitron', monospace;
-  }
+sidebarOverlay.addEventListener('click', () => {
+  sidebar.classList.remove('open');
+  sidebarOverlay.classList.remove('open');
+});
 
-  .toast.success {
-    border-color: var(--accent-green);
-    color: var(--accent-green);
+// Touch swipe to close
+let touchStartX = 0;
+document.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; });
+document.addEventListener('touchend', e => {
+  if (touchStartX < 260 && e.changedTouches[0].clientX - touchStartX < -60) {
+    sidebar.classList.remove('open');
+    sidebarOverlay.classList.remove('open');
   }
+});
 
-  .toast.error {
-    border-color: var(--accent-red);
-    color: var(--accent-red);
-  }
-
-  @keyframes slideInRight {
-    from {
-      opacity: 0;
-      transform: translateX(20px);
+// ── NAV ITEMS ────────────────────────────────
+document.querySelectorAll('.nav-item').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    // Close sidebar on mobile
+    if (window.innerWidth < 900) {
+      sidebar.classList.remove('open');
+      sidebarOverlay.classList.remove('open');
     }
-    to {
-      opacity: 1;
-      transform: translateX(0);
-    }
-  }
-`;
-document.head.appendChild(toastStyle);
-
-// ═══════════════════════════════════════════════════════════════
-// MAIN SCAN FUNCTION
-// ═══════════════════════════════════════════════════════════════
-
-async function performScan(target) {
-  if (scanInProgress) return;
-  scanInProgress = true;
-
-  // Hide empty state and previous results
-  emptyState.style.display = 'none';
-  resultsSection.style.display = 'none';
-  scanAnimation.style.display = 'block';
-  aiAnalysisPhase.style.display = 'none';
-  criticalAlert.style.display = 'none';
-
-  // Reset collectors
-  collectorsGrid.querySelectorAll('.collector-card').forEach(card => {
-    card.classList.remove('complete', 'running');
-    card.querySelector('.progress-mini').style.width = '20%';
   });
-
-  // Disable input
-  scanBtn.disabled = true;
-  scanBtn.querySelector('.btn-scan-text').textContent = 'SCANNING...';
-  scanBtn.querySelector('.btn-scan-spinner').style.display = 'flex';
-
-  try {
-    // Phase 1: Initialize
-    await animatePhase1();
-
-    // Determine collectors needed
-    const type = detectTargetType(target);
-    const collectors = ['shodan', 'whois', 'hibp', 'github', 'google', 'social_scan'];
-
-    // Phase 2: Collecting
-    await animatePhase2(collectors);
-
-    // Make API call
-    const response = await fetch(`${API_BASE}/scan`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ target }),
-      signal: AbortSignal.timeout(60000),
-    });
-
-    if (!response.ok) {
-      if (response.status === 429) {
-        throw new Error('Rate limited');
-      }
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const data = await response.json();
-    lastScanData = data;
-
-    // Phase 3: AI Analysis
-    await animatePhase3();
-
-    // Phase 4: Complete
-    await animatePhase4();
-
-    // Render results
-    await new Promise(resolve => setTimeout(resolve, 500));
-    scanAnimation.style.display = 'none';
-    resultsSection.style.display = 'block';
-    renderResults(data);
-
-    // Update scan counter
-    scanCount++;
-    scanCountDisplay.textContent = scanCount;
-
-    // Add to history
-    addToScanHistory(target, data.report?.risk_level || 'low', data.report?.risk_score || 0);
-
-    showToast(`Scan complete for ${target}`, 'success');
-
-  } catch (error) {
-    console.error('Scan error:', error);
-    scanAnimation.style.display = 'none';
-
-    if (error.message === 'Rate limited') {
-      showToast('Rate limited. Please wait before scanning again.', 'error');
-    } else if (error.name === 'TimeoutError') {
-      showToast('Scan timed out. Backend may be offline.', 'error');
-    } else {
-      showToast('Scan failed. Check backend connection.', 'error');
-    }
-
-    emptyState.style.display = 'flex';
-
-  } finally {
-    scanBtn.disabled = false;
-    scanBtn.querySelector('.btn-scan-text').textContent = 'INITIATE SCAN';
-    scanBtn.querySelector('.btn-scan-spinner').style.display = 'none';
-    scanInProgress = false;
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════
-// EVENT LISTENERS
-// ═══════════════════════════════════════════════════════════════
-
-scanBtn.addEventListener('click', () => {
-  const target = targetInput.value.trim();
-  if (!target) {
-    targetInput.focus();
-    showToast('Please enter a target to scan.', 'error');
-    return;
-  }
-  performScan(target);
 });
 
-targetInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') scanBtn.click();
-});
-
-// PDF Export
-pdfBtn.addEventListener('click', async () => {
-  const target = targetInput.value.trim() || lastScanData?.target;
-  if (!target) {
-    showToast('Run a scan first.', 'error');
-    return;
+// ── MOUSE PARALLAX ────────────────────────────
+document.addEventListener('mousemove', e => {
+  const bgGrid = document.querySelector('.bg-grid');
+  if (bgGrid) {
+    const x = (e.clientX / window.innerWidth  - 0.5) * 12;
+    const y = (e.clientY / window.innerHeight - 0.5) * 12;
+    bgGrid.style.transform = `translate(${x}px, ${y}px)`;
   }
-
-  pdfBtn.disabled = true;
-  pdfBtn.textContent = 'GENERATING...';
-
-  try {
-    const res = await fetch(`${API_BASE}/scan/pdf`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ target }),
-      signal: AbortSignal.timeout(30000),
-    });
-
-    if (!res.ok) throw new Error();
-
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `reconmind_${target.replace(/[^\w.-]/g, '_')}.pdf`;
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast('PDF exported.', 'success');
-  } catch {
-    showToast('PDF export failed.', 'error');
-  } finally {
-    pdfBtn.disabled = false;
-    pdfBtn.innerHTML = '<span>📄</span> DOWNLOAD PDF REPORT';
-  }
-});
-
-// JSON Export
-jsonBtn.addEventListener('click', () => {
-  if (!lastScanData) {
-    showToast('Run a scan first.', 'error');
-    return;
-  }
-
-  const blob = new Blob([JSON.stringify(lastScanData, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  const target = (lastScanData.target || 'scan').replace(/[^\w.-]/g, '_');
-  a.download = `reconmind_${target}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
-  showToast('JSON downloaded.', 'success');
-});
-
-// New Scan
-newScanBtn.addEventListener('click', () => {
-  targetInput.value = '';
-  targetInput.focus();
-  autoDetectBadge.textContent = 'AWAITING INPUT';
-  resultsSection.style.display = 'none';
-  emptyState.style.display = 'flex';
-  criticalAlert.style.display = 'none';
 });
 
 /* ═══════════════════════════════════════════════════════════════
+   UPDATES MADE:
+   
+   ✅ PDF Export (Lines 652-679):
+      • Sends target + report + osint_data to backend
+      • Shows animated "⏳ GENERATING..." button state
+      • Better error handling with console.error()
+      • Proper finally block for button reset
+   
+   ✅ JSON Export (Lines 681-708):
+      • Includes metadata (exportDate, target, version)
+      • Structured format: metadata + report + osint_data
+      • Unique filename with timestamp
+      • Error handling with console.error()
+   
    All Copyright Reserved © 2025 ReconMind
-   AI-Powered OSINT Intelligence Engine
    ═══════════════════════════════════════════════════════════════ */
-
