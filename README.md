@@ -3,12 +3,6 @@
 > Built by Amay Jogdand & Atharva Tavaskar · May 2026
 
 ---
-██████╗ ███████╗ ██████╗ ██████╗ ███╗   ██╗███╗   ███╗██╗███╗   ██╗██████╗
-██╔══██╗██╔════╝██╔════╝██╔═══██╗████╗  ██║████╗ ████║██║████╗  ██║██╔══██╗
-██████╔╝█████╗  ██║     ██║   ██║██╔██╗ ██║██╔████╔██║██║██╔██╗ ██║██║  ██║
-██╔══██╗██╔══╝  ██║     ██║   ██║██║╚██╗██║██║╚██╔╝██║██║██║╚██╗██║██║  ██║
-██║  ██║███████╗╚██████╗╚██████╔╝██║ ╚████║██║ ╚═╝ ██║██║██║ ╚████║██████╔╝
-╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝╚═╝     ╚═╝╚═╝╚═╝  ╚═══╝╚═════╝
 
 I got tired of manually checking 5 different websites every time I wanted to investigate a domain, IP, or username. So I built something that does it all at once — and then has AI make sense of it.
 
