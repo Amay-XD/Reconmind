@@ -230,7 +230,21 @@ async function startScan(){
         target
       })
     }
-  ).then(res => res.json());
+  )
+  .then(res => {
+    if (!res.ok) {
+      throw new Error(`Backend error: HTTP ${res.status}`);
+    }
+    return res.json();
+  })
+  .catch(err => {
+    console.error('❌ Scan failed:', err.message);
+    console.error('Backend URL:', API_BASE);
+    alert(`Scan failed!\n\nError: ${err.message}\n\nMake sure backend is running at: ${API_BASE}\n\nRun: python Backend/app.py`);
+    scanBtn.disabled = false;
+    scanExperience.classList.add("hidden");
+    throw err;
+  });
 
   const response = await responsePromise;
 
