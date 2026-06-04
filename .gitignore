@@ -1,5 +1,25 @@
-config.py
-.env
+# Python
 __pycache__/
 *.pyc
+*.pyo
+*.egg-info/
 venv/
+env/
+
+# API Keys
+config.py
+.env
+.env.local
+
+# Reports
+output/reports/
+output/*.pdf
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
