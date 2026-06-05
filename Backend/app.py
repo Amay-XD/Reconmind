@@ -21,6 +21,10 @@ import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
 from datetime import datetime, timezone
 from typing import Any
+from dotenv import load_dotenv
+
+# Load .env file if it exists (for local development)
+load_dotenv()
 
 # ─────────────────────────────────────────────────────────────────────────────
 # THIRD-PARTY
@@ -45,8 +49,18 @@ from ai_engine.groq_analysis import analyze_target
 from output.pdf_export import export_pdf
 
 # ─────────────────────────────────────────────────────────────────────────────
-# LOGGING
+# ENVIRONMENT VARIABLES & API KEYS
 # ─────────────────────────────────────────────────────────────────────────────
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+SHODAN_API_KEY = os.environ.get("SHODAN_API_KEY", "")
+GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
+FLASK_ENV = os.environ.get("FLASK_ENV", "development")
+
+# Validate API keys on startup
+if not GROQ_API_KEY:
+    print("⚠️  WARNING: GROQ_API_KEY not set - AI analysis will not work")
+if not SHODAN_API_KEY:
+    print("⚠️  WARNING: SHODAN_API_KEY not set - Shodan collector will not work")
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)-8s %(name)s — %(message)s",
