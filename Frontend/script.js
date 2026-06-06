@@ -1017,9 +1017,13 @@ window.addEventListener('resize', () => {
     canvas.height = window.innerHeight;
 });
 
-// Prevent zooming on mobile
-document.addEventListener('touchmove', (e) => {
-    if (e.scale !== 1) {
+// Prevent pinch-zoom on mobile (but allow scrolling)
+document.addEventListener('gesturestart', (e) => {
+    e.preventDefault();
+}, { passive: false });
+
+document.addEventListener('wheel', (e) => {
+    if (e.ctrlKey) {
         e.preventDefault();
     }
 }, { passive: false });
