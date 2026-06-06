@@ -74,6 +74,12 @@ logging.basicConfig(
 logger = logging.getLogger("reconmind")
 
 # ─────────────────────────────────────────────────────────────────────────────
+# CREATE REQUIRED DIRECTORIES
+# ─────────────────────────────────────────────────────────────────────────────
+# Create output directory for PDF reports (at project root, not in Backend/)
+os.makedirs(os.path.join(os.path.dirname(os.path.dirname(__file__)), "output", "reports"), exist_ok=True)
+
+# ─────────────────────────────────────────────────────────────────────────────
 # FLASK APP
 # ─────────────────────────────────────────────────────────────────────────────
 app = Flask(__name__)
