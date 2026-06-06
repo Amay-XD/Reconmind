@@ -4,7 +4,7 @@
 // ============================================
 
 // API Configuration
-const API_BASE = "http://localhost:5000"; // Change to Railway URL for production
+const API_BASE = "web-production-4b26.up.railway.app"; // 
 
 // Global State
 let scansToday = 0;
