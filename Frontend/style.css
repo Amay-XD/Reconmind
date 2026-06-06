@@ -1539,3 +1539,16 @@ svg {
     --gauge-color-med: var(--amber-warning);
     --gauge-color-high: var(--red-danger);
 }
+
+/* Mobile scrolling fix */
+@media (max-width: 768px) {
+    .particle-background {
+        position: absolute !important;
+        height: auto;
+        min-height: 100vh;
+    }
+    
+    body {
+        overflow-x: visible;
+    }
+}
