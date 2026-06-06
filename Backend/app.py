@@ -38,6 +38,10 @@ from flask_talisman import Talisman
 # ─────────────────────────────────────────────────────────────────────────────
 # INTERNAL MODULES
 # ─────────────────────────────────────────────────────────────────────────────
+# Fix import paths for Railway deployment
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from collectors.shodan_collector import collect_shodan
 from collectors.hibp_collector import HIBPCollector
 from collectors.whois_collector import WhoisCollector
