@@ -84,8 +84,16 @@ os.makedirs(os.path.join(os.path.dirname(os.path.dirname(__file__)), "output", "
 # ─────────────────────────────────────────────────────────────────────────────
 app = Flask(__name__)
 
-# Enable CORS
-CORS(app)
+# Enable CORS - Allow all origins (frontend can be on any domain)
+CORS(app, resources={
+    r"/*": {
+        "origins": "*",
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"],
+        "supports_credentials": False,
+        "max_age": 3600
+    }
+})
 
 # Security headers — force_https=False so Railway HTTP works fine
 Talisman(app, content_security_policy=False, force_https=False)
