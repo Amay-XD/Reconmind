@@ -481,7 +481,6 @@ async function runPhase4() {
         }, 800);
     });
 }
-
 async function fetchAndDisplayResults(target) {
     // Hide scanning section
     document.getElementById('scanningSection').classList.add('hidden');
