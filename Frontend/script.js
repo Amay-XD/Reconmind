@@ -534,11 +534,6 @@ async function fetchAndDisplayResults(target) {
     }, 300);
 }
     
-    // Scroll to results
-    setTimeout(() => {
-        document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth' });
-    }, 300);
-}
 
 // ============================================
 // RESULTS DISPLAY
