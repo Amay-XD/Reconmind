@@ -487,6 +487,8 @@ async function fetchAndDisplayResults(target) {
     document.getElementById('scanningSection').classList.add('hidden');
     
     try {
+        console.log(`📡 Calling backend: ${API_BASE}/scan`);
+        
         // Make API call to /scan endpoint
         const response = await fetch(`${API_BASE}/scan`, {
             method: 'POST',
@@ -497,26 +499,41 @@ async function fetchAndDisplayResults(target) {
         });
         
         if (!response.ok) {
-            throw new Error(`API error: ${response.statusText}`);
+            throw new Error(`Backend error: HTTP ${response.status} ${response.statusText}`);
         }
         
         const data = await response.json();
+        console.log('✅ Backend response:', data);
+        
         currentScanResult = data;
         
-        // Display results
+        // Display REAL results from backend
         displayResults(data);
         
         // Show results section
         document.getElementById('resultsSection').classList.remove('hidden');
         
     } catch (error) {
-        console.error('Error fetching results:', error);
-        showToast('Error fetching results from API', 'error');
+        console.error('❌ API ERROR:', error);
+        console.error('Backend URL:', API_BASE);
+        console.error('Error details:', error.message);
         
-        // Show demo results for offline testing
-        displayDemoResults(target);
-        document.getElementById('resultsSection').classList.remove('hidden');
+        showToast(`Scan failed: ${error.message}`, 'error');
+        
+        // Optionally: redirect back to scan
+        setTimeout(() => {
+            resetToScan();
+        }, 2000);
     }
+    
+    // Scroll to results
+    setTimeout(() => {
+        const resultsSection = document.getElementById('resultsSection');
+        if (!resultsSection.classList.contains('hidden')) {
+            resultsSection.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, 300);
+}
     
     // Scroll to results
     setTimeout(() => {
