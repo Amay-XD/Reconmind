@@ -87,7 +87,7 @@ app = Flask(__name__)
 # Enable CORS - Allow all origins (frontend can be on any domain)
 CORS(app, resources={
     r"/*": {
-        "origins": "*",
+        "origins": "https://reconmind.vercel.app",
         "methods": ["GET", "POST", "OPTIONS"],
         "allow_headers": ["Content-Type", "Authorization"],
         "supports_credentials": False,
