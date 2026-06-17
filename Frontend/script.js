@@ -1038,3 +1038,19 @@ document.addEventListener('wheel', (e) => {
         e.preventDefault();
     }
 }, { passive: false });
+
+// ============================================
+// KEEP BACKEND ALIVE (Prevent Render sleep)
+// ============================================
+
+function keepBackendAlive() {
+    setInterval(() => {
+        fetch(`${API_BASE}/health`)
+            .catch(err => console.log('Keep-alive ping sent'));
+    }, 5 * 60 * 1000); // Every 5 minutes
+}
+
+// Start keep-alive when page loads
+document.addEventListener('DOMContentLoaded', () => {
+    keepBackendAlive();
+});
