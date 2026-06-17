@@ -216,7 +216,7 @@ def run_collectors(input_type: str, target: str) -> dict[str, Any]:
 
     osint_data: dict[str, Any] = {}
 
-    with ThreadPoolExecutor(max_workers=len(tasks)) as executor:
+    with ThreadPoolExecutor(max_workers=2) as executor:  
         future_to_key = {executor.submit(fn): key for key, fn in tasks.items()}
 
         for future in as_completed(future_to_key):
