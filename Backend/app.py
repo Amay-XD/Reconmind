@@ -166,18 +166,18 @@ def _build_collector_tasks(input_type: str, target: str) -> dict[str, Any]:
     elif input_type == "email":
         tasks["hibp"]         = lambda: _hibp_collector.collect(target)
         tasks["social_scan"]  = lambda: _social_scanner.collect(target)
-        tasks["google_dorks"] = lambda: _google_collector.collect(target)
+     #   tasks["google_dorks"] = lambda: _google_collector.collect(target)   # Disable Google Dorks to reduce memory pressure
 
     elif input_type == "domain":
         tasks["whois"]        = lambda: _whois_collector.collect(target)
         tasks["shodan"]       = lambda: collect_shodan(target)
         tasks["google_dorks"] = lambda: _google_collector.collect(target)
-        tasks["github"]       = lambda: _github_collector.collect(target)
+     #   tasks["github"]       = lambda: _github_collector.collect(target)   # Disable Google Dorks to reduce memory pressure
 
     elif input_type == "username":
         tasks["github"]       = lambda: _github_collector.collect(target)
         tasks["social_scan"]  = lambda: _social_scanner.collect(target)
-        tasks["google_dorks"] = lambda: _google_collector.collect(target)
+      #  tasks["google_dorks"] = lambda: _google_collector.collect(target)   # Disable Google Dorks to reduce memory pressure
 
     return tasks
 
