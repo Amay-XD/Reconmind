@@ -222,7 +222,7 @@ def run_collectors(input_type: str, target: str) -> dict[str, Any]:
         for future in as_completed(future_to_key):
             key = future_to_key[future]
             try:
-                result = future.result(timeout=20)
+                result = future.result(timeout=59)
                 osint_data[key] = result
                 logger.info("Collector '%s' completed successfully.", key)
             except TimeoutError:
