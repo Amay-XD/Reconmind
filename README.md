@@ -43,7 +43,7 @@ The output comes in three forms — a live web dashboard, a colored terminal rep
 - Hosted on Vercel
 
 **Deployment**
-- Backend → Railway
+- Backend → Render 
 - Frontend → Vercel
 
 ---
@@ -179,4 +179,4 @@ This tool is for legitimate security research, investigating your own infrastruc
 
 ---
 
-*If you're reading this and want to talk cybersecurity, connect with me on LinkedIn.*[www.linkedin.com/in/amay-jogdand-794758347]
+*If you're reading this and want to talk cybersecurity, connect with me on LinkedIn.*[www.linkedin.com/in/amay-jogdand]
