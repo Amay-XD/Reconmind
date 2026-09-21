@@ -37,7 +37,7 @@ except ImportError:
     print(f"{Fore.RED}[ERROR] config.py not found or GROQ_API_KEY missing.")
     GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 
-MODEL_ID = "llama-3.3-70b-versatile"
+MODEL_ID = "mixtral-8x7b-32768"
 MAX_TOKENS  = 4096
 TEMPERATURE = 0.3
 
